@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { uploadFile } from "@/lib/upload-client";
 import SignaturePad from "@/components/SignaturePad";
 import { genererPdfEtatDesLieux } from "@/lib/pdf-edl";
 
@@ -205,15 +206,11 @@ export default function NouvelEtatDesLieuxPage() {
     const photosUrls: string[] = [];
     if (photos) {
       for (const fichier of Array.from(photos)) {
-        const chemin = `${maisonId}/${Date.now()}-${fichier.name}`;
-        const { error: uploadError } = await supabase.storage
-          .from("edl-photos")
-          .upload(chemin, fichier);
-        if (!uploadError) {
-          const {
-            data: { publicUrl },
-          } = supabase.storage.from("edl-photos").getPublicUrl(chemin);
-          photosUrls.push(publicUrl);
+        try {
+          const url = await uploadFile(fichier, `edl-photos/${maisonId}`);
+          photosUrls.push(url);
+        } catch {
+          // photo ignorée si l'upload échoue, on continue les autres
         }
       }
     }
@@ -224,16 +221,16 @@ export default function NouvelEtatDesLieuxPage() {
       suffixe: string
     ): Promise<string | null> {
       if (!dataUrl) return null;
-      const blob = await (await fetch(dataUrl)).blob();
-      const chemin = `${maisonId}/signature-${suffixe}-${Date.now()}.png`;
-      const { error } = await supabase.storage
-        .from("edl-photos")
-        .upload(chemin, blob);
-      if (error) return null;
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("edl-photos").getPublicUrl(chemin);
-      return publicUrl;
+      try {
+        const blob = await (await fetch(dataUrl)).blob();
+        return await uploadFile(
+          blob,
+          `edl-photos/${maisonId}`,
+          `signature-${suffixe}.png`
+        );
+      } catch {
+        return null;
+      }
     }
 
     setEtapeChargement("Enregistrement des signatures...");
@@ -273,23 +270,14 @@ export default function NouvelEtatDesLieuxPage() {
         photosUrls,
       });
 
-      const cheminPdf = `${maisonId}/edl-${Date.now()}.pdf`;
-      const { error: pdfError } = await supabase.storage
-        .from("edl-pdf")
-        .upload(cheminPdf, pdfBlob, { contentType: "application/pdf" });
-
-      if (pdfError) {
-        console.error("Erreur upload PDF :", pdfError);
-        avertissementPdf = `L'état des lieux a été enregistré, mais le PDF n'a pas pu être sauvegardé (${pdfError.message}). Vérifie que le bucket "edl-pdf" existe et est public dans Supabase.`;
-      } else {
-        const {
-          data: { publicUrl },
-        } = supabase.storage.from("edl-pdf").getPublicUrl(cheminPdf);
-        pdfUrl = publicUrl;
-      }
+      pdfUrl = await uploadFile(
+        pdfBlob,
+        `edl-pdf/${maisonId}`,
+        `edl-${Date.now()}.pdf`
+      );
     } catch (e: any) {
-      console.error("Erreur génération PDF :", e);
-      avertissementPdf = `L'état des lieux a été enregistré, mais la génération du PDF a échoué (${
+      console.error("Erreur génération/upload PDF :", e);
+      avertissementPdf = `L'état des lieux a été enregistré, mais le PDF n'a pas pu être généré ou sauvegardé (${
         e?.message ?? "erreur inconnue"
       }). Regarde la console (F12) pour le détail.`;
     }
