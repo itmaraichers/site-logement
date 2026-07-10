@@ -1,8 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import AlertesListe from "@/components/AlertesListe";
 
-const TYPES_DOCUMENTS_REQUIS = ["bail", "assurance"];
-
 export default async function AlertesPage() {
   const supabase = createClient();
 
@@ -10,8 +8,6 @@ export default async function AlertesPage() {
     { data: entretiens },
     { data: logements },
     { data: parametres },
-    { data: maisonsActives },
-    { data: documents },
     { data: edlEntrees },
   ] = await Promise.all([
     supabase
@@ -30,8 +26,6 @@ export default async function AlertesPage() {
       .select("seuil_alerte_jours")
       .eq("id", 1)
       .single(),
-    supabase.from("maisons").select("id, nom").eq("actif", true),
-    supabase.from("documents").select("maison_id, type_document"),
     supabase
       .from("logements")
       .select("id, chambre_id, salarie_id, chambres(nom), salaries(nom, prenom)")
@@ -87,23 +81,6 @@ export default async function AlertesPage() {
     })
     .filter((a): a is NonNullable<typeof a> => a !== null);
 
-  // Documents manquants : bail / assurance non trouvés pour une maison active
-  const alertesDocuments = (maisonsActives ?? []).flatMap((m) => {
-    const typesPresents = (documents ?? [])
-      .filter((d) => d.maison_id === m.id)
-      .map((d) => d.type_document);
-
-    return TYPES_DOCUMENTS_REQUIS.filter(
-      (type) => !typesPresents.includes(type)
-    ).map((type) => ({
-      id: `doc-${m.id}-${type}`,
-      titre: `Document manquant — ${m.nom}`,
-      description: `Aucun document de type "${type}" enregistré`,
-      gravite: "a_prevoir" as const,
-      href: `/maisons/${m.id}`,
-    }));
-  });
-
   // États des lieux d'entrée manquants pour les occupants actuels
   const alertesEdlManquants = (edlEntrees ?? []).map((l) => ({
     id: `edl-${l.id}`,
@@ -137,7 +114,6 @@ export default async function AlertesPage() {
   const toutesAlertes = [
     ...alertesEntretiens,
     ...alertesSorties,
-    ...alertesDocuments,
     ...alertesEdlManquantsFiltrees,
   ].sort((a, b) => (a.gravite === "en_retard" ? -1 : 1));
 
@@ -146,8 +122,8 @@ export default async function AlertesPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-semibold text-slate-900">Alertes</h1>
         <p className="text-slate-500">
-          Entretiens, sorties dépassées, documents et états des lieux
-          manquants — calculés à J-{seuil}
+          Entretiens, sorties dépassées et états des lieux manquants —
+          calculés à J-{seuil}
         </p>
       </div>
 
