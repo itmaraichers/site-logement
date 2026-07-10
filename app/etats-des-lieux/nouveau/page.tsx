@@ -245,6 +245,7 @@ export default function NouvelEtatDesLieuxPage() {
       : undefined;
 
     let pdfUrl: string | null = null;
+    let avertissementPdf: string | null = null;
     try {
       const pdfBlob = await genererPdfEtatDesLieux({
         typeEDL: typeEDL as "maison" | "chambre",
@@ -265,14 +266,20 @@ export default function NouvelEtatDesLieuxPage() {
         .from("edl-pdf")
         .upload(cheminPdf, pdfBlob, { contentType: "application/pdf" });
 
-      if (!pdfError) {
+      if (pdfError) {
+        console.error("Erreur upload PDF :", pdfError);
+        avertissementPdf = `L'état des lieux a été enregistré, mais le PDF n'a pas pu être sauvegardé (${pdfError.message}). Vérifie que le bucket "edl-pdf" existe et est public dans Supabase.`;
+      } else {
         const {
           data: { publicUrl },
         } = supabase.storage.from("edl-pdf").getPublicUrl(cheminPdf);
         pdfUrl = publicUrl;
       }
-    } catch {
-      // si la génération PDF échoue, on continue quand même l'enregistrement
+    } catch (e: any) {
+      console.error("Erreur génération PDF :", e);
+      avertissementPdf = `L'état des lieux a été enregistré, mais la génération du PDF a échoué (${
+        e?.message ?? "erreur inconnue"
+      }). Regarde la console (F12) pour le détail.`;
     }
 
     // 4. Insertion de l'état des lieux
@@ -343,6 +350,10 @@ export default function NouvelEtatDesLieuxPage() {
     }
 
     setChargement(false);
+
+    if (avertissementPdf) {
+      window.alert(avertissementPdf);
+    }
 
     if (typeEDL === "chambre" && chambreId) {
       router.push(`/chambres/${chambreId}`);

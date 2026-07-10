@@ -673,7 +673,7 @@ function OngletEtatsDesLieux({
                 </p>
               </div>
               <div className="flex items-center gap-3">
-                {edl.pdf_url && (
+                {edl.pdf_url ? (
                   <a
                     href={edl.pdf_url}
                     target="_blank"
@@ -682,6 +682,10 @@ function OngletEtatsDesLieux({
                   >
                     PDF
                   </a>
+                ) : (
+                  <span className="text-xs text-slate-400">
+                    PDF indisponible
+                  </span>
                 )}
                 <button
                   onClick={() => supprimer(edl.id)}
