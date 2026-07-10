@@ -1,0 +1,548 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+
+type Logement = {
+  id: string;
+  date_entree: string;
+  date_sortie_prevue: string | null;
+  date_sortie_reelle: string | null;
+  remise_cles_le: string | null;
+  salaries: { id: string; nom: string; prenom: string } | null;
+};
+
+type Salarie = { id: string; nom: string; prenom: string };
+
+type Document = {
+  id: string;
+  nom: string;
+  type_document: string | null;
+  url: string;
+};
+
+type EtatDesLieux = {
+  id: string;
+  sens: string;
+  date_edl: string;
+  pdf_url: string | null;
+  salaries: { nom: string; prenom: string } | null;
+};
+
+const ONGLETS = [
+  { key: "occupants", label: "Occupants" },
+  { key: "edl", label: "États des lieux" },
+  { key: "documents", label: "Documents" },
+] as const;
+
+type OngletKey = (typeof ONGLETS)[number]["key"];
+
+export default function FicheChambreTabs({
+  chambreId,
+  maisonId,
+  capacite,
+  occupantsActuels,
+  occupantsPasses,
+  salariesDisponibles,
+  documents,
+  etatsDesLieux,
+}: {
+  chambreId: string;
+  maisonId: string;
+  capacite: number;
+  occupantsActuels: Logement[];
+  occupantsPasses: Logement[];
+  salariesDisponibles: Salarie[];
+  documents: Document[];
+  etatsDesLieux: EtatDesLieux[];
+}) {
+  const [onglet, setOnglet] = useState<OngletKey>("occupants");
+
+  return (
+    <div>
+      <div className="flex gap-1 border-b border-slate-200 mb-5">
+        {ONGLETS.map((o) => (
+          <button
+            key={o.key}
+            onClick={() => setOnglet(o.key)}
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+              onglet === o.key
+                ? "border-primary-500 text-primary-700"
+                : "border-transparent text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+
+      {onglet === "occupants" && (
+        <OngletOccupants
+          chambreId={chambreId}
+          maisonId={maisonId}
+          capacite={capacite}
+          occupantsActuels={occupantsActuels}
+          occupantsPasses={occupantsPasses}
+          salariesDisponibles={salariesDisponibles}
+        />
+      )}
+      {onglet === "edl" && <OngletEdl etatsDesLieux={etatsDesLieux} />}
+      {onglet === "documents" && (
+        <OngletDocuments chambreId={chambreId} documents={documents} />
+      )}
+    </div>
+  );
+}
+
+// ------------------------------------------------------------------
+// OCCUPANTS
+// ------------------------------------------------------------------
+function OngletOccupants({
+  chambreId,
+  maisonId,
+  capacite,
+  occupantsActuels,
+  occupantsPasses,
+  salariesDisponibles,
+}: {
+  chambreId: string;
+  maisonId: string;
+  capacite: number;
+  occupantsActuels: Logement[];
+  occupantsPasses: Logement[];
+  salariesDisponibles: Salarie[];
+}) {
+  const router = useRouter();
+  const supabase = createClient();
+
+  const [ouvert, setOuvert] = useState(false);
+  const [modeCreation, setModeCreation] = useState(false);
+  const [salarieId, setSalarieId] = useState("");
+  const [nouveauNom, setNouveauNom] = useState("");
+  const [nouveauPrenom, setNouveauPrenom] = useState("");
+  const [dateEntree, setDateEntree] = useState("");
+  const [dateSortiePrevue, setDateSortiePrevue] = useState("");
+  const [remiseCles, setRemiseCles] = useState("");
+  const [chargement, setChargement] = useState(false);
+  const [erreur, setErreur] = useState<string | null>(null);
+
+  const complet = occupantsActuels.length >= capacite;
+
+  async function ajouter(e: React.FormEvent) {
+    e.preventDefault();
+    setErreur(null);
+    setChargement(true);
+
+    let idSalarie = salarieId;
+
+    if (modeCreation) {
+      const { data: nouveauSalarie, error: erreurSalarie } = await supabase
+        .from("salaries")
+        .insert({ nom: nouveauNom, prenom: nouveauPrenom })
+        .select()
+        .single();
+
+      if (erreurSalarie) {
+        setErreur(erreurSalarie.message);
+        setChargement(false);
+        return;
+      }
+      idSalarie = nouveauSalarie.id;
+    }
+
+    const { error } = await supabase.from("logements").insert({
+      salarie_id: idSalarie,
+      chambre_id: chambreId,
+      maison_id: maisonId,
+      date_entree: dateEntree,
+      date_sortie_prevue: dateSortiePrevue || null,
+      remise_cles_le: remiseCles || null,
+    });
+
+    setChargement(false);
+
+    if (error) {
+      setErreur(
+        error.message.includes("uniq_logement_actif_salarie")
+          ? "Ce salarié est déjà logé ailleurs actuellement."
+          : error.message
+      );
+      return;
+    }
+
+    setOuvert(false);
+    setModeCreation(false);
+    setSalarieId("");
+    setNouveauNom("");
+    setNouveauPrenom("");
+    setDateEntree("");
+    setDateSortiePrevue("");
+    setRemiseCles("");
+    router.refresh();
+  }
+
+  async function retirer(logementId: string) {
+    setChargement(true);
+    await supabase
+      .from("logements")
+      .update({ date_sortie_reelle: new Date().toISOString().slice(0, 10) })
+      .eq("id", logementId);
+    setChargement(false);
+    router.refresh();
+  }
+
+  return (
+    <div>
+      <div className="flex justify-end mb-3">
+        <button
+          onClick={() => setOuvert(!ouvert)}
+          disabled={complet && !ouvert}
+          className="text-sm font-medium text-primary-600 hover:text-primary-700 disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {ouvert
+            ? "Annuler"
+            : complet
+            ? "Chambre complète"
+            : "+ Ajouter un salarié dans cette chambre"}
+        </button>
+      </div>
+
+      {ouvert && (
+        <form
+          onSubmit={ajouter}
+          className="bg-white border border-slate-200 rounded-xl p-4 mb-4 space-y-3"
+        >
+          <div className="flex gap-2 text-sm mb-1">
+            <button
+              type="button"
+              onClick={() => setModeCreation(false)}
+              className={`px-3 py-1 rounded-md ${
+                !modeCreation
+                  ? "bg-primary-500 text-white"
+                  : "bg-slate-100 text-slate-600"
+              }`}
+            >
+              Salarié existant
+            </button>
+            <button
+              type="button"
+              onClick={() => setModeCreation(true)}
+              className={`px-3 py-1 rounded-md ${
+                modeCreation
+                  ? "bg-primary-500 text-white"
+                  : "bg-slate-100 text-slate-600"
+              }`}
+            >
+              Nouveau salarié
+            </button>
+          </div>
+
+          {!modeCreation ? (
+            <select
+              required
+              value={salarieId}
+              onChange={(e) => setSalarieId(e.target.value)}
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            >
+              <option value="">Choisir un salarié...</option>
+              {salariesDisponibles.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.prenom} {s.nom}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              <input
+                required
+                placeholder="Prénom"
+                value={nouveauPrenom}
+                onChange={(e) => setNouveauPrenom(e.target.value)}
+                className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+              />
+              <input
+                required
+                placeholder="Nom"
+                value={nouveauNom}
+                onChange={(e) => setNouveauNom(e.target.value)}
+                className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+              />
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">
+                Date d'entrée *
+              </label>
+              <input
+                required
+                type="date"
+                value={dateEntree}
+                onChange={(e) => setDateEntree(e.target.value)}
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">
+                Sortie prévue
+              </label>
+              <input
+                type="date"
+                value={dateSortiePrevue}
+                onChange={(e) => setDateSortiePrevue(e.target.value)}
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">
+                Remise des clés le
+              </label>
+              <input
+                type="date"
+                value={remiseCles}
+                onChange={(e) => setRemiseCles(e.target.value)}
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              />
+            </div>
+          </div>
+
+          {erreur && <p className="text-sm text-red-600">{erreur}</p>}
+
+          <button
+            type="submit"
+            disabled={chargement}
+            className="bg-primary-500 hover:bg-primary-600 text-white text-sm font-medium px-4 py-2 rounded-md disabled:opacity-50"
+          >
+            {chargement ? "Ajout..." : "Ajouter dans la chambre"}
+          </button>
+        </form>
+      )}
+
+      <p className="text-sm font-medium text-slate-700 mb-2">
+        Occupants actuels
+      </p>
+      {occupantsActuels.length === 0 ? (
+        <p className="text-sm text-slate-500 py-3">Chambre libre.</p>
+      ) : (
+        <div className="space-y-2 mb-6">
+          {occupantsActuels.map((l) => (
+            <div
+              key={l.id}
+              className="flex items-center justify-between border border-slate-200 rounded-lg p-3"
+            >
+              <div>
+                <p className="text-sm font-medium text-slate-900">
+                  {l.salaries?.prenom} {l.salaries?.nom}
+                </p>
+                <p className="text-xs text-slate-400">
+                  Depuis le {new Date(l.date_entree).toLocaleDateString("fr-FR")}
+                  {l.date_sortie_prevue &&
+                    ` · Sortie prévue le ${new Date(
+                      l.date_sortie_prevue
+                    ).toLocaleDateString("fr-FR")}`}
+                </p>
+              </div>
+              <button
+                onClick={() => retirer(l.id)}
+                disabled={chargement}
+                className="text-xs text-red-600 hover:underline disabled:opacity-50"
+              >
+                Retirer
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {occupantsPasses.length > 0 && (
+        <>
+          <p className="text-sm font-medium text-slate-700 mb-2">
+            Historique
+          </p>
+          <div className="space-y-2">
+            {occupantsPasses.map((l) => (
+              <div
+                key={l.id}
+                className="border border-slate-100 rounded-lg p-3 text-sm text-slate-500"
+              >
+                {l.salaries?.prenom} {l.salaries?.nom} — du{" "}
+                {new Date(l.date_entree).toLocaleDateString("fr-FR")} au{" "}
+                {l.date_sortie_reelle &&
+                  new Date(l.date_sortie_reelle).toLocaleDateString("fr-FR")}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ------------------------------------------------------------------
+// ÉTATS DES LIEUX
+// ------------------------------------------------------------------
+function OngletEdl({ etatsDesLieux }: { etatsDesLieux: EtatDesLieux[] }) {
+  const router = useRouter();
+  const supabase = createClient();
+  const [chargement, setChargement] = useState(false);
+
+  async function supprimer(id: string) {
+    if (!window.confirm("Supprimer cet état des lieux ?")) return;
+    setChargement(true);
+    await supabase.from("etats_des_lieux").delete().eq("id", id);
+    setChargement(false);
+    router.refresh();
+  }
+
+  return etatsDesLieux.length === 0 ? (
+    <p className="text-sm text-slate-500 py-6 text-center">
+      Aucun état des lieux pour cette chambre.
+    </p>
+  ) : (
+    <div className="space-y-2">
+      {etatsDesLieux.map((edl) => (
+        <div
+          key={edl.id}
+          className="flex items-center justify-between border border-slate-200 rounded-lg p-3"
+        >
+          <div>
+            <p className="text-sm font-medium text-slate-900">
+              {edl.sens === "entree" ? "Entrée" : "Sortie"}
+              {edl.salaries && ` · ${edl.salaries.prenom} ${edl.salaries.nom}`}
+            </p>
+            <p className="text-xs text-slate-400">
+              {new Date(edl.date_edl).toLocaleDateString("fr-FR")}
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            {edl.pdf_url && (
+              <a
+                href={edl.pdf_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-primary-600 hover:underline"
+              >
+                PDF
+              </a>
+            )}
+            <button
+              onClick={() => supprimer(edl.id)}
+              disabled={chargement}
+              className="text-sm text-red-600 hover:underline disabled:opacity-50"
+            >
+              Supprimer
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ------------------------------------------------------------------
+// DOCUMENTS
+// ------------------------------------------------------------------
+function OngletDocuments({
+  chambreId,
+  documents,
+}: {
+  chambreId: string;
+  documents: Document[];
+}) {
+  const router = useRouter();
+  const supabase = createClient();
+  const [nom, setNom] = useState("");
+  const [fichier, setFichier] = useState<File | null>(null);
+  const [chargement, setChargement] = useState(false);
+  const [erreur, setErreur] = useState<string | null>(null);
+
+  async function ajouter(e: React.FormEvent) {
+    e.preventDefault();
+    if (!fichier) return;
+    setChargement(true);
+    setErreur(null);
+
+    const chemin = `${chambreId}/${Date.now()}-${fichier.name}`;
+    const { error: uploadError } = await supabase.storage
+      .from("documents")
+      .upload(chemin, fichier);
+
+    if (uploadError) {
+      setErreur(uploadError.message);
+      setChargement(false);
+      return;
+    }
+
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from("documents").getPublicUrl(chemin);
+
+    await supabase.from("documents").insert({
+      chambre_id: chambreId,
+      nom: nom || fichier.name,
+      type_document: "divers",
+      url: publicUrl,
+    });
+
+    setChargement(false);
+    setNom("");
+    setFichier(null);
+    router.refresh();
+  }
+
+  return (
+    <div>
+      <form
+        onSubmit={ajouter}
+        className="bg-white border border-slate-200 rounded-xl p-4 mb-4 grid grid-cols-1 sm:grid-cols-2 gap-3"
+      >
+        <input
+          placeholder="Nom du document"
+          value={nom}
+          onChange={(e) => setNom(e.target.value)}
+          className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+        />
+        <input
+          required
+          type="file"
+          onChange={(e) => setFichier(e.target.files?.[0] ?? null)}
+          className="text-sm"
+        />
+        {erreur && (
+          <p className="text-sm text-red-600 sm:col-span-2">{erreur}</p>
+        )}
+        <button
+          type="submit"
+          disabled={chargement || !fichier}
+          className="bg-primary-500 hover:bg-primary-600 text-white text-sm font-medium px-4 py-2 rounded-md sm:col-span-2 disabled:opacity-50"
+        >
+          {chargement ? "Envoi..." : "Ajouter le document"}
+        </button>
+      </form>
+
+      {documents.length === 0 ? (
+        <p className="text-sm text-slate-500 py-6 text-center">
+          Aucun document pour cette chambre.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {documents.map((d) => (
+            <a
+              key={d.id}
+              href={d.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-between border border-slate-200 rounded-lg p-3 hover:border-primary-400 transition-colors"
+            >
+              <span className="text-sm font-medium text-slate-900">
+                📄 {d.nom}
+              </span>
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
