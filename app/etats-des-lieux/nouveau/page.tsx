@@ -73,9 +73,11 @@ export default function NouvelEtatDesLieuxPage() {
   const [commentaire, setCommentaire] = useState("");
   const [observationsSalarie, setObservationsSalarie] = useState("");
   const [photos, setPhotos] = useState<FileList | null>(null);
-  const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(
-    null
-  );
+  const [signatureEntrepriseDataUrl, setSignatureEntrepriseDataUrl] =
+    useState<string | null>(null);
+  const [signatureSalarieDataUrl, setSignatureSalarieDataUrl] = useState<
+    string | null
+  >(null);
 
   const [chargement, setChargement] = useState(false);
   const [etapeChargement, setEtapeChargement] = useState("");
@@ -216,24 +218,33 @@ export default function NouvelEtatDesLieuxPage() {
       }
     }
 
-    // 2. Upload de la signature
-    let signatureUrl: string | null = null;
-    if (signatureDataUrl) {
-      setEtapeChargement("Enregistrement de la signature...");
-      const blobSignature = await (await fetch(signatureDataUrl)).blob();
-      const cheminSignature = `${maisonId}/signature-${Date.now()}.png`;
-      const { error: sigError } = await supabase.storage
+    // 2. Upload des signatures
+    async function uploaderSignature(
+      dataUrl: string | null,
+      suffixe: string
+    ): Promise<string | null> {
+      if (!dataUrl) return null;
+      const blob = await (await fetch(dataUrl)).blob();
+      const chemin = `${maisonId}/signature-${suffixe}-${Date.now()}.png`;
+      const { error } = await supabase.storage
         .from("edl-photos")
-        .upload(cheminSignature, blobSignature);
-      if (!sigError) {
-        const {
-          data: { publicUrl },
-        } = supabase.storage
-          .from("edl-photos")
-          .getPublicUrl(cheminSignature);
-        signatureUrl = publicUrl;
-      }
+        .upload(chemin, blob);
+      if (error) return null;
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("edl-photos").getPublicUrl(chemin);
+      return publicUrl;
     }
+
+    setEtapeChargement("Enregistrement des signatures...");
+    const signatureEntrepriseUrl = await uploaderSignature(
+      signatureEntrepriseDataUrl,
+      "entreprise"
+    );
+    const signatureSalarieUrl = await uploaderSignature(
+      signatureSalarieDataUrl,
+      "salarie"
+    );
 
     // 3. Génération du PDF
     setEtapeChargement("Génération du PDF...");
@@ -257,7 +268,8 @@ export default function NouvelEtatDesLieuxPage() {
         pieces,
         commentaireGeneral: commentaire,
         observationsSalarie,
-        signatureDataUrl,
+        signatureEntrepriseDataUrl,
+        signatureSalarieDataUrl,
         photosUrls,
       });
 
@@ -297,7 +309,8 @@ export default function NouvelEtatDesLieuxPage() {
         observations_salarie: observationsSalarie,
       },
       photos: photosUrls,
-      signature_url: signatureUrl,
+      signature_entreprise_url: signatureEntrepriseUrl,
+      signature_salarie_url: signatureSalarieUrl,
       pdf_url: pdfUrl,
     });
 
@@ -744,11 +757,19 @@ export default function NouvelEtatDesLieuxPage() {
             </p>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Signature
-            </label>
-            <SignaturePad onChange={setSignatureDataUrl} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Signature entreprise
+              </label>
+              <SignaturePad onChange={setSignatureEntrepriseDataUrl} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Signature salarié
+              </label>
+              <SignaturePad onChange={setSignatureSalarieDataUrl} />
+            </div>
           </div>
 
           {sens === "sortie" && typeEDL === "chambre" && (

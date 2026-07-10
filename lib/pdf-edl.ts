@@ -31,7 +31,8 @@ export async function genererPdfEtatDesLieux(params: {
   pieces: Piece[];
   commentaireGeneral: string;
   observationsSalarie: string;
-  signatureDataUrl: string | null;
+  signatureEntrepriseDataUrl: string | null;
+  signatureSalarieDataUrl: string | null;
   photosUrls: string[];
 }): Promise<Blob> {
   const doc = new jsPDF();
@@ -202,20 +203,56 @@ export async function genererPdfEtatDesLieux(params: {
     y += hauteurPhoto + 10;
   }
 
-  // ---------- Signature ----------
-  if (params.signatureDataUrl) {
-    if (y > 240) {
+  // ---------- Signatures ----------
+  if (params.signatureEntrepriseDataUrl || params.signatureSalarieDataUrl) {
+    if (y > 235) {
       doc.addPage();
       y = 20;
     }
     doc.setFontSize(11);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(...COULEUR_TEXTE);
-    doc.text("Signature", margeGauche, y);
+    doc.text("Signatures", margeGauche, y);
     y += 4;
-    doc.setDrawColor(203, 213, 225); // slate-300
-    doc.rect(margeGauche, y, 75, 28);
-    doc.addImage(params.signatureDataUrl, "PNG", margeGauche + 2, y + 2, 71, 24);
+
+    const largeurCase = (largeurUtile - 8) / 2;
+    const hauteurCase = 30;
+    const xEntreprise = margeGauche;
+    const xSalarie = margeGauche + largeurCase + 8;
+
+    // Case Entreprise
+    doc.setDrawColor(203, 213, 225);
+    doc.rect(xEntreprise, y, largeurCase, hauteurCase);
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...COULEUR_GRIS);
+    doc.text("Signature entreprise", xEntreprise + 2, y + hauteurCase + 4);
+    if (params.signatureEntrepriseDataUrl) {
+      doc.addImage(
+        params.signatureEntrepriseDataUrl,
+        "PNG",
+        xEntreprise + 2,
+        y + 2,
+        largeurCase - 4,
+        hauteurCase - 4
+      );
+    }
+
+    // Case Salarié
+    doc.rect(xSalarie, y, largeurCase, hauteurCase);
+    doc.text("Signature salarié", xSalarie + 2, y + hauteurCase + 4);
+    if (params.signatureSalarieDataUrl) {
+      doc.addImage(
+        params.signatureSalarieDataUrl,
+        "PNG",
+        xSalarie + 2,
+        y + 2,
+        largeurCase - 4,
+        hauteurCase - 4
+      );
+    }
+
+    y += hauteurCase + 8;
   }
 
   // ---------- Pied de page ----------
