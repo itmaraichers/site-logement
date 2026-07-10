@@ -203,8 +203,8 @@ export async function genererPdfEtatDesLieux(params: {
     y += hauteurPhoto + 10;
   }
 
-  // ---------- Signatures ----------
-  if (params.signatureEntrepriseDataUrl || params.signatureSalarieDataUrl) {
+  // ---------- Signatures (toujours affichées, même vides, pour signature papier) ----------
+  {
     if (y > 235) {
       doc.addPage();
       y = 20;
