@@ -15,7 +15,11 @@ const LIENS = [
   { href: "/admin", label: "Admin" },
 ];
 
-export default function Navbar() {
+export default function Navbar({
+  nombreAlertes = 0,
+}: {
+  nombreAlertes?: number;
+}) {
   const pathname = usePathname();
 
   if (pathname === "/login") return null;
@@ -35,13 +39,18 @@ export default function Navbar() {
             <Link
               key={lien.href}
               href={lien.href}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+              className={`relative px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                 actif
                   ? "bg-primary-500 text-white"
                   : "text-slate-600 hover:bg-primary-50 hover:text-primary-700"
               }`}
             >
               {lien.label}
+              {lien.href === "/alertes" && nombreAlertes > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold min-w-[18px] h-[18px] rounded-full flex items-center justify-center px-1">
+                  {nombreAlertes > 99 ? "99+" : nombreAlertes}
+                </span>
+              )}
             </Link>
           );
         })}
