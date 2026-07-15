@@ -1,6 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 
 type Alerte = {
   id: string;
@@ -21,6 +24,20 @@ const GRAVITE_BADGE: Record<string, { label: string; classe: string }> = {
 };
 
 export default function AlertesListe({ alertes }: { alertes: Alerte[] }) {
+  const router = useRouter();
+  const supabase = createClient();
+  const [masquage, setMasquage] = useState<string | null>(null);
+
+  async function masquer(id: string) {
+    if (!window.confirm("Supprimer cette alerte ? Elle ne réapparaîtra plus.")) {
+      return;
+    }
+    setMasquage(id);
+    await supabase.from("alertes_masquees").insert({ id });
+    setMasquage(null);
+    router.refresh();
+  }
+
   if (alertes.length === 0) {
     return (
       <div className="text-center py-16">
@@ -35,21 +52,30 @@ export default function AlertesListe({ alertes }: { alertes: Alerte[] }) {
       {alertes.map((a) => {
         const badge = GRAVITE_BADGE[a.gravite];
         return (
-          <Link
+          <div
             key={a.id}
-            href={a.href}
             className={`flex items-center justify-between border rounded-lg p-4 hover:shadow-sm transition-all ${GRAVITE_STYLE[a.gravite]}`}
           >
-            <div>
+            <Link href={a.href} className="flex-1">
               <p className="font-medium text-slate-900">{a.titre}</p>
               <p className="text-sm text-slate-500">{a.description}</p>
+            </Link>
+            <div className="flex items-center gap-3 ml-3">
+              <span
+                className={`text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${badge.classe}`}
+              >
+                {badge.label}
+              </span>
+              <button
+                onClick={() => masquer(a.id)}
+                disabled={masquage === a.id}
+                className="text-slate-400 hover:text-red-600 text-sm disabled:opacity-50"
+                title="Supprimer cette alerte"
+              >
+                ✕
+              </button>
             </div>
-            <span
-              className={`text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${badge.classe}`}
-            >
-              {badge.label}
-            </span>
-          </Link>
+          </div>
         );
       })}
     </div>

@@ -142,12 +142,19 @@ export default async function AlertesPage() {
     })
     .filter((a): a is NonNullable<typeof a> => a !== null);
 
+  const { data: alertesMasquees } = await supabase
+    .from("alertes_masquees")
+    .select("id");
+  const idsMasques = new Set((alertesMasquees ?? []).map((a) => a.id));
+
   const toutesAlertes = [
     ...alertesEntretiens,
     ...alertesSorties,
     ...alertesEdlManquantsFiltrees,
     ...alertesFinContrat,
-  ].sort((a, b) => (a.gravite === "en_retard" ? -1 : 1));
+  ]
+    .filter((a) => !idsMasques.has(a.id))
+    .sort((a, b) => (a.gravite === "en_retard" ? -1 : 1));
 
   return (
     <div>
