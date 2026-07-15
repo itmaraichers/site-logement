@@ -9,6 +9,7 @@ export default async function AlertesPage() {
     { data: logements },
     { data: parametres },
     { data: edlEntrees },
+    { data: salariesFinContrat },
   ] = await Promise.all([
     supabase
       .from("entretiens")
@@ -30,6 +31,11 @@ export default async function AlertesPage() {
       .from("logements")
       .select("id, chambre_id, salarie_id, chambres(nom), salaries(nom, prenom)")
       .is("date_sortie_reelle", null),
+    supabase
+      .from("salaries")
+      .select("id, nom, prenom, date_fin_contrat")
+      .eq("actif", true)
+      .not("date_fin_contrat", "is", null),
   ]);
 
   const seuil = parametres?.seuil_alerte_jours ?? 30;
@@ -111,10 +117,36 @@ export default async function AlertesPage() {
       href: `/chambres/${l.chambreId}`,
     }));
 
+  // Fin de contrat approche — rappel de prévoir l'état des lieux de sortie
+  const alertesFinContrat = (salariesFinContrat ?? [])
+    .map((s) => {
+      const cible = new Date(s.date_fin_contrat as string);
+      const jours = Math.floor(
+        (cible.getTime() - aujourdHui.getTime()) / (1000 * 60 * 60 * 24)
+      );
+      if (jours > seuil) return null;
+      return {
+        id: `fin-contrat-${s.id}`,
+        titre: `Fin de contrat approche — ${s.prenom} ${s.nom}`,
+        description:
+          jours < 0
+            ? `Contrat terminé depuis le ${cible.toLocaleDateString(
+                "fr-FR"
+              )} · penser à faire l'état des lieux de sortie`
+            : `Le ${cible.toLocaleDateString(
+                "fr-FR"
+              )} · prévoir l'état des lieux de sortie le jour du départ`,
+        gravite: jours < 0 ? ("en_retard" as const) : ("a_prevoir" as const),
+        href: `/salaries/${s.id}`,
+      };
+    })
+    .filter((a): a is NonNullable<typeof a> => a !== null);
+
   const toutesAlertes = [
     ...alertesEntretiens,
     ...alertesSorties,
     ...alertesEdlManquantsFiltrees,
+    ...alertesFinContrat,
   ].sort((a, b) => (a.gravite === "en_retard" ? -1 : 1));
 
   return (
@@ -122,8 +154,8 @@ export default async function AlertesPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-semibold text-slate-900">Alertes</h1>
         <p className="text-slate-500">
-          Entretiens, sorties dépassées et états des lieux manquants —
-          calculés à J-{seuil}
+          Entretiens, sorties dépassées, états des lieux manquants et fins de
+          contrat — calculés à J-{seuil}
         </p>
       </div>
 
