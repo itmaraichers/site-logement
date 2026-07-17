@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { uploadFile } from "@/lib/upload-client";
 
 export default function GaleriePhotos({
   table,
@@ -29,12 +28,20 @@ export default function GaleriePhotos({
     const nouvellesUrls: string[] = [];
 
     for (const fichier of Array.from(fichiers)) {
-      try {
-        const url = await uploadFile(fichier, `${dossierStorage}/${id}`);
-        nouvellesUrls.push(url);
-      } catch (e: any) {
-        setErreur(e?.message ?? "Erreur lors de l'upload");
+      const chemin = `${dossierStorage}/${id}/${Date.now()}-${fichier.name}`;
+      const { error: uploadError } = await supabase.storage
+        .from("maisons-photos")
+        .upload(chemin, fichier);
+
+      if (uploadError) {
+        setErreur(uploadError.message);
+        continue;
       }
+
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("maisons-photos").getPublicUrl(chemin);
+      nouvellesUrls.push(publicUrl);
     }
 
     await supabase

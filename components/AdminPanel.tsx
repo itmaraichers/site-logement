@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { uploadFile } from "@/lib/upload-client";
 
 type TypeEntretien = { id: string; nom: string; actif: boolean };
 type Site = { id: string; nom: string; actif: boolean };
@@ -530,14 +529,20 @@ function OngletModelesDocuments({ modeles }: { modeles: ModeleDocument[] }) {
     setChargement(true);
     setErreur(null);
 
-    let publicUrl: string;
-    try {
-      publicUrl = await uploadFile(fichier, "documents/modeles");
-    } catch (e: any) {
-      setErreur(e?.message ?? "Erreur lors de l'upload");
+    const chemin = `modeles/${Date.now()}-${fichier.name}`;
+    const { error: uploadError } = await supabase.storage
+      .from("documents")
+      .upload(chemin, fichier);
+
+    if (uploadError) {
+      setErreur(uploadError.message);
       setChargement(false);
       return;
     }
+
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from("documents").getPublicUrl(chemin);
 
     await supabase.from("modeles_documents").insert({
       nom: nom || fichier.name,

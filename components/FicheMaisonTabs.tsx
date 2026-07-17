@@ -4,7 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { uploadFile } from "@/lib/upload-client";
 
 type Chambre = {
   chambre_id: string;
@@ -449,14 +448,20 @@ function OngletDocuments({
     setChargement(true);
     setErreur(null);
 
-    let publicUrl: string;
-    try {
-      publicUrl = await uploadFile(fichier, `documents/maisons/${maisonId}`);
-    } catch (e: any) {
-      setErreur(e?.message ?? "Erreur lors de l'upload");
+    const chemin = `${maisonId}/${Date.now()}-${fichier.name}`;
+    const { error: uploadError } = await supabase.storage
+      .from("documents")
+      .upload(chemin, fichier);
+
+    if (uploadError) {
+      setErreur(uploadError.message);
       setChargement(false);
       return;
     }
+
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from("documents").getPublicUrl(chemin);
 
     await supabase.from("documents").insert({
       maison_id: maisonId,
