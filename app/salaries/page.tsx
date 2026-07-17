@@ -7,7 +7,7 @@ export default async function SalariesPage() {
 
   const [{ data: salaries, error }, { data: logementsActifs }] =
     await Promise.all([
-      supabase.from("salaries").select("*").order("nom"),
+      supabase.from("salaries").select("*, sites(nom)").order("nom"),
       supabase
         .from("logements")
         .select("salarie_id, date_entree, date_sortie_prevue, chambres(nom), maisons(nom)")
@@ -22,6 +22,7 @@ export default async function SalariesPage() {
       prenom: s.prenom,
       telephone: s.telephone,
       actif: s.actif,
+      siteNom: (s.sites as any)?.nom ?? null,
       logement: logement
         ? {
             date_entree: logement.date_entree,

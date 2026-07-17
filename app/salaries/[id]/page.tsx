@@ -15,7 +15,7 @@ export default async function FicheSalariePage({
 
   const { data: salarie } = await supabase
     .from("salaries")
-    .select("*")
+    .select("*, sites(nom)")
     .eq("id", salarieId)
     .single();
 
@@ -80,7 +80,13 @@ export default async function FicheSalariePage({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mt-4 pt-4 border-t border-slate-100 text-sm">
+        <div className="grid grid-cols-2 sm:grid-cols-6 gap-4 mt-4 pt-4 border-t border-slate-100 text-sm">
+          <div>
+            <p className="text-slate-400">Site d'affectation</p>
+            <p className="text-slate-700 font-medium">
+              {(salarie.sites as any)?.nom || "—"}
+            </p>
+          </div>
           <div>
             <p className="text-slate-400">Date de naissance</p>
             <p className="text-slate-700 font-medium">

@@ -9,6 +9,7 @@ type SalarieLigne = {
   prenom: string;
   telephone: string | null;
   actif: boolean;
+  siteNom: string | null;
   logement: {
     date_entree: string;
     date_sortie_prevue: string | null;
@@ -93,6 +94,7 @@ export default function SalariesListe({
               <tr>
                 <th className="px-4 py-2.5 font-medium">Nom</th>
                 <th className="px-4 py-2.5 font-medium">Téléphone</th>
+                <th className="px-4 py-2.5 font-medium">Site</th>
                 <th className="px-4 py-2.5 font-medium">Logement actuel</th>
                 <th className="px-4 py-2.5 font-medium">Entrée / Sortie prévue</th>
                 <th className="px-4 py-2.5 font-medium">Statut</th>
@@ -111,6 +113,9 @@ export default function SalariesListe({
                   </td>
                   <td className="px-4 py-3 text-slate-500">
                     {s.telephone || "—"}
+                  </td>
+                  <td className="px-4 py-3 text-slate-500">
+                    {s.siteNom || "—"}
                   </td>
                   <td className="px-4 py-3 text-slate-500">
                     {s.logement

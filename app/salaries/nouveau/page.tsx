@@ -1,13 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+
+type Site = { id: string; nom: string };
 
 export default function NouveauSalariePage() {
   const router = useRouter();
   const supabase = createClient();
 
+  const [sites, setSites] = useState<Site[]>([]);
+  const [siteId, setSiteId] = useState("");
   const [nom, setNom] = useState("");
   const [prenom, setPrenom] = useState("");
   const [telephone, setTelephone] = useState("");
@@ -17,6 +21,16 @@ export default function NouveauSalariePage() {
   const [dateFinContrat, setDateFinContrat] = useState("");
   const [erreur, setErreur] = useState<string | null>(null);
   const [chargement, setChargement] = useState(false);
+
+  useEffect(() => {
+    supabase
+      .from("sites")
+      .select("id, nom")
+      .eq("actif", true)
+      .order("nom")
+      .then(({ data }) => setSites(data ?? []));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -33,6 +47,7 @@ export default function NouveauSalariePage() {
         date_entree_entreprise: dateEntreeEntreprise || null,
         date_debut_contrat: dateDebutContrat || null,
         date_fin_contrat: dateFinContrat || null,
+        site_id: siteId || null,
       })
       .select()
       .single();
@@ -81,6 +96,29 @@ export default function NouveauSalariePage() {
               className="w-full rounded-md border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-1">
+            Site d'affectation
+          </label>
+          <select
+            value={siteId}
+            onChange={(e) => setSiteId(e.target.value)}
+            className="w-full rounded-md border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+          >
+            <option value="">Aucun / à définir</option>
+            {sites.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.nom}
+              </option>
+            ))}
+          </select>
+          {sites.length === 0 && (
+            <p className="text-xs text-slate-400 mt-1">
+              Aucun site créé pour l'instant — gère-les dans Admin → Sites.
+            </p>
+          )}
         </div>
 
         <div>

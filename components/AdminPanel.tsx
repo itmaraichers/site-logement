@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { uploadFile } from "@/lib/upload-client";
 
 type TypeEntretien = { id: string; nom: string; actif: boolean };
+type Site = { id: string; nom: string; actif: boolean };
 type Parametres = {
   mail_actif: boolean;
   mail_expediteur: string | null;
@@ -29,6 +30,7 @@ type ModeleDocument = {
 
 const ONGLETS = [
   { key: "types", label: "Types d'entretien" },
+  { key: "sites", label: "Sites" },
   { key: "notifications", label: "Notifications" },
   { key: "statuts", label: "Statuts" },
   { key: "langues", label: "Langues" },
@@ -39,12 +41,14 @@ type OngletKey = (typeof ONGLETS)[number]["key"];
 
 export default function AdminPanel({
   typesEntretien,
+  sites,
   parametres,
   statuts,
   langues,
   modelesDocuments,
 }: {
   typesEntretien: TypeEntretien[];
+  sites: Site[];
   parametres: Parametres;
   statuts: Statut[];
   langues: Langue[];
@@ -71,6 +75,7 @@ export default function AdminPanel({
       </div>
 
       {onglet === "types" && <OngletTypesEntretien types={typesEntretien} />}
+      {onglet === "sites" && <OngletSites sites={sites} />}
       {onglet === "notifications" && (
         <OngletNotifications parametres={parametres} />
       )}
@@ -90,6 +95,84 @@ export default function AdminPanel({
           test, pour rester simple.
         </p>
       </div>
+    </div>
+  );
+}
+
+// ------------------------------------------------------------------
+// SITES D'AFFECTATION
+// ------------------------------------------------------------------
+function OngletSites({ sites }: { sites: Site[] }) {
+  const router = useRouter();
+  const supabase = createClient();
+  const [nouveauSite, setNouveauSite] = useState("");
+  const [chargement, setChargement] = useState(false);
+
+  async function ajouter(e: React.FormEvent) {
+    e.preventDefault();
+    if (!nouveauSite.trim()) return;
+    setChargement(true);
+    await supabase.from("sites").insert({ nom: nouveauSite });
+    setChargement(false);
+    setNouveauSite("");
+    router.refresh();
+  }
+
+  async function toggle(id: string, actif: boolean) {
+    await supabase.from("sites").update({ actif: !actif }).eq("id", id);
+    router.refresh();
+  }
+
+  return (
+    <div>
+      <form onSubmit={ajouter} className="flex gap-2 mb-4">
+        <input
+          value={nouveauSite}
+          onChange={(e) => setNouveauSite(e.target.value)}
+          placeholder="Nouveau site d'affectation (ex: Site de Brécey)"
+          className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm"
+        />
+        <button
+          type="submit"
+          disabled={chargement}
+          className="bg-primary-500 hover:bg-primary-600 text-white text-sm font-medium px-4 py-2 rounded-md disabled:opacity-50"
+        >
+          Ajouter
+        </button>
+      </form>
+
+      {sites.length === 0 ? (
+        <p className="text-sm text-slate-500 py-6 text-center">
+          Aucun site créé pour l'instant.
+        </p>
+      ) : (
+        <div className="bg-white border border-slate-200 rounded-xl divide-y divide-slate-100">
+          {sites.map((s) => (
+            <div
+              key={s.id}
+              className="flex items-center justify-between px-4 py-3"
+            >
+              <span
+                className={`text-sm ${
+                  s.actif ? "text-slate-900" : "text-slate-400 line-through"
+                }`}
+              >
+                {s.nom}
+              </span>
+              <button
+                onClick={() => toggle(s.id, s.actif)}
+                className={`text-xs font-medium px-3 py-1 rounded-full ${
+                  s.actif
+                    ? "bg-green-100 text-green-700"
+                    : "bg-slate-100 text-slate-500"
+                }`}
+              >
+                {s.actif ? "Actif" : "Inactif"}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -6,12 +6,14 @@ export default async function AdminPage() {
 
   const [
     { data: typesEntretien },
+    { data: sites },
     { data: parametres },
     { data: statuts },
     { data: langues },
     { data: modelesDocuments },
   ] = await Promise.all([
     supabase.from("types_entretien").select("*").order("nom"),
+    supabase.from("sites").select("*").order("nom"),
     supabase.from("parametres_notification").select("*").eq("id", 1).single(),
     supabase
       .from("statuts_disponibles")
@@ -38,6 +40,7 @@ export default async function AdminPage() {
 
       <AdminPanel
         typesEntretien={typesEntretien ?? []}
+        sites={sites ?? []}
         parametres={
           parametres ?? {
             mail_actif: true,

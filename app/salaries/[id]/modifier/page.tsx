@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
+type Site = { id: string; nom: string };
+
 export default function ModifierSalariePage({
   params,
 }: {
@@ -13,6 +15,8 @@ export default function ModifierSalariePage({
   const supabase = createClient();
 
   const [chargementInitial, setChargementInitial] = useState(true);
+  const [sites, setSites] = useState<Site[]>([]);
+  const [siteId, setSiteId] = useState("");
   const [nom, setNom] = useState("");
   const [prenom, setPrenom] = useState("");
   const [telephone, setTelephone] = useState("");
@@ -26,11 +30,12 @@ export default function ModifierSalariePage({
 
   useEffect(() => {
     async function charger() {
-      const { data } = await supabase
-        .from("salaries")
-        .select("*")
-        .eq("id", params.id)
-        .single();
+      const [{ data }, { data: sitesData }] = await Promise.all([
+        supabase.from("salaries").select("*").eq("id", params.id).single(),
+        supabase.from("sites").select("id, nom").eq("actif", true).order("nom"),
+      ]);
+
+      setSites(sitesData ?? []);
 
       if (data) {
         setNom(data.nom);
@@ -41,6 +46,7 @@ export default function ModifierSalariePage({
         setDateSortieEntreprise(data.date_sortie_entreprise ?? "");
         setDateDebutContrat(data.date_debut_contrat ?? "");
         setDateFinContrat(data.date_fin_contrat ?? "");
+        setSiteId(data.site_id ?? "");
       }
       setChargementInitial(false);
     }
@@ -64,6 +70,7 @@ export default function ModifierSalariePage({
         date_sortie_entreprise: dateSortieEntreprise || null,
         date_debut_contrat: dateDebutContrat || null,
         date_fin_contrat: dateFinContrat || null,
+        site_id: siteId || null,
       })
       .eq("id", params.id);
 
@@ -115,6 +122,24 @@ export default function ModifierSalariePage({
               className="w-full rounded-md border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-1">
+            Site d'affectation
+          </label>
+          <select
+            value={siteId}
+            onChange={(e) => setSiteId(e.target.value)}
+            className="w-full rounded-md border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+          >
+            <option value="">Aucun / à définir</option>
+            {sites.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.nom}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div>
