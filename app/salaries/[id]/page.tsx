@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import FicheSalarieTabs from "@/components/FicheSalarieTabs";
 import ToggleActifSalarie from "@/components/ToggleActifSalarie";
 import BoutonSupprimer from "@/components/BoutonSupprimer";
+import PhotoProfilSalarie from "@/components/PhotoProfilSalarie";
 
 export default async function FicheSalariePage({
   params,
@@ -64,13 +65,20 @@ export default async function FicheSalariePage({
 
       <div className="bg-white border border-slate-200 rounded-xl p-6 mb-6">
         <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-slate-900 mb-1">
-              {salarie.prenom} {salarie.nom}
-            </h1>
-            {salarie.telephone && (
-              <p className="text-slate-500">{salarie.telephone}</p>
-            )}
+          <div className="flex items-center gap-4">
+            <PhotoProfilSalarie
+              salarieId={salarie.id}
+              photoUrl={salarie.photo_url}
+              prenom={salarie.prenom}
+            />
+            <div>
+              <h1 className="text-2xl font-semibold text-slate-900 mb-1">
+                {salarie.prenom} {salarie.nom}
+              </h1>
+              {salarie.telephone && (
+                <p className="text-slate-500">{salarie.telephone}</p>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <ToggleActifSalarie salarieId={salarie.id} actif={salarie.actif} />

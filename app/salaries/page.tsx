@@ -28,6 +28,7 @@ export default async function SalariesPage() {
       date_fin_contrat: s.date_fin_contrat,
       actif: s.actif,
       siteNom: (s.sites as any)?.nom ?? null,
+      photoUrl: s.photo_url,
       logement: logement
         ? {
             date_entree: logement.date_entree,

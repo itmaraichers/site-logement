@@ -10,6 +10,7 @@ type SalarieLigne = {
   telephone: string | null;
   actif: boolean;
   siteNom: string | null;
+  photoUrl: string | null;
   logement: {
     date_entree: string;
     date_sortie_prevue: string | null;
@@ -92,6 +93,7 @@ export default function SalariesListe({
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-slate-500 text-left">
               <tr>
+                <th className="px-4 py-2.5 font-medium w-14"></th>
                 <th className="px-4 py-2.5 font-medium">Nom</th>
                 <th className="px-4 py-2.5 font-medium">Téléphone</th>
                 <th className="px-4 py-2.5 font-medium">Site</th>
@@ -104,6 +106,21 @@ export default function SalariesListe({
             <tbody>
               {salariesFiltres.map((s) => (
                 <tr key={s.id} className="border-t border-slate-100">
+                  <td className="px-4 py-3">
+                    <Link href={`/salaries/${s.id}`}>
+                      {s.photoUrl ? (
+                        <img
+                          src={s.photoUrl}
+                          alt={s.prenom}
+                          className="w-9 h-9 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-9 h-9 rounded-full bg-primary-100 flex items-center justify-center text-xs font-semibold text-primary-600">
+                          {s.prenom.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                    </Link>
+                  </td>
                   <td className="px-4 py-3">
                     <Link
                       href={`/salaries/${s.id}`}
