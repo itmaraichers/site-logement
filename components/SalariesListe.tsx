@@ -96,7 +96,8 @@ export default function SalariesListe({
                 <th className="px-4 py-2.5 font-medium">Téléphone</th>
                 <th className="px-4 py-2.5 font-medium">Site</th>
                 <th className="px-4 py-2.5 font-medium">Logement actuel</th>
-                <th className="px-4 py-2.5 font-medium">Entrée / Sortie prévue</th>
+                <th className="px-4 py-2.5 font-medium">Date d'entrée</th>
+                <th className="px-4 py-2.5 font-medium">Sortie prévue</th>
                 <th className="px-4 py-2.5 font-medium">Statut</th>
               </tr>
             </thead>
@@ -126,15 +127,16 @@ export default function SalariesListe({
                   </td>
                   <td className="px-4 py-3 text-slate-500">
                     {s.logement
-                      ? `${new Date(s.logement.date_entree).toLocaleDateString(
+                      ? new Date(s.logement.date_entree).toLocaleDateString(
                           "fr-FR"
-                        )}${
+                        )
+                      : "—"}
+                  </td>
+                  <td className="px-4 py-3 text-slate-500">
+                    {s.logement?.date_sortie_prevue
+                      ? new Date(
                           s.logement.date_sortie_prevue
-                            ? ` → ${new Date(
-                                s.logement.date_sortie_prevue
-                              ).toLocaleDateString("fr-FR")}`
-                            : ""
-                        }`
+                        ).toLocaleDateString("fr-FR")
                       : "—"}
                   </td>
                   <td className="px-4 py-3">
