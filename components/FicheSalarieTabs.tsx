@@ -31,10 +31,17 @@ type EtatDesLieux = {
   chambres: { nom: string } | null;
 };
 
+type Note = {
+  id: string;
+  contenu: string;
+  created_at: string;
+};
+
 const ONGLETS = [
   { key: "logement", label: "Logement actuel" },
   { key: "edl", label: "États des lieux" },
   { key: "documents", label: "Documents" },
+  { key: "notes", label: "Notes internes" },
   { key: "historique", label: "Historique logement" },
 ] as const;
 
@@ -46,12 +53,14 @@ export default function FicheSalarieTabs({
   historique,
   documents,
   etatsDesLieux,
+  notes,
 }: {
   salarieId: string;
   logementActuel: Logement | undefined;
   historique: Logement[];
   documents: Document[];
   etatsDesLieux: EtatDesLieux[];
+  notes: Note[];
 }) {
   const [onglet, setOnglet] = useState<OngletKey>("logement");
 
@@ -82,6 +91,9 @@ export default function FicheSalarieTabs({
       {onglet === "edl" && <OngletEdl etatsDesLieux={etatsDesLieux} />}
       {onglet === "documents" && (
         <OngletDocuments salarieId={salarieId} documents={documents} />
+      )}
+      {onglet === "notes" && (
+        <OngletNotes salarieId={salarieId} notes={notes} />
       )}
       {onglet === "historique" && <OngletHistorique historique={historique} />}
     </div>
@@ -364,6 +376,76 @@ function OngletDocuments({
                 {d.type_document}
               </span>
             </a>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ------------------------------------------------------------------
+// NOTES INTERNES
+// ------------------------------------------------------------------
+function OngletNotes({
+  salarieId,
+  notes,
+}: {
+  salarieId: string;
+  notes: Note[];
+}) {
+  const router = useRouter();
+  const supabase = createClient();
+  const [contenu, setContenu] = useState("");
+  const [chargement, setChargement] = useState(false);
+
+  async function ajouter(e: React.FormEvent) {
+    e.preventDefault();
+    if (!contenu.trim()) return;
+    setChargement(true);
+    await supabase.from("notes").insert({ salarie_id: salarieId, contenu });
+    setChargement(false);
+    setContenu("");
+    router.refresh();
+  }
+
+  return (
+    <div>
+      <form
+        onSubmit={ajouter}
+        className="bg-white border border-slate-200 rounded-xl p-4 mb-4"
+      >
+        <textarea
+          placeholder="Ajouter une note..."
+          value={contenu}
+          onChange={(e) => setContenu(e.target.value)}
+          rows={3}
+          className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm mb-2"
+        />
+        <button
+          type="submit"
+          disabled={chargement}
+          className="bg-primary-500 hover:bg-primary-600 text-white text-sm font-medium px-4 py-2 rounded-md disabled:opacity-50"
+        >
+          {chargement ? "Ajout..." : "Ajouter la note"}
+        </button>
+      </form>
+
+      {notes.length === 0 ? (
+        <p className="text-sm text-slate-500 py-6 text-center">
+          Aucune note pour ce salarié.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {notes.map((n) => (
+            <div
+              key={n.id}
+              className="border border-slate-200 rounded-lg p-3"
+            >
+              <p className="text-sm text-slate-700">{n.contenu}</p>
+              <p className="text-xs text-slate-400 mt-1">
+                {new Date(n.created_at).toLocaleString("fr-FR")}
+              </p>
+            </div>
           ))}
         </div>
       )}

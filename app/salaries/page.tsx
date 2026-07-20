@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import SalariesListe from "@/components/SalariesListe";
+import ExporterSalariesExcel from "@/components/ExporterSalariesExcel";
 
 export default async function SalariesPage() {
   const supabase = createClient();
@@ -21,6 +22,10 @@ export default async function SalariesPage() {
       nom: s.nom,
       prenom: s.prenom,
       telephone: s.telephone,
+      date_naissance: s.date_naissance,
+      date_entree_entreprise: s.date_entree_entreprise,
+      date_debut_contrat: s.date_debut_contrat,
+      date_fin_contrat: s.date_fin_contrat,
       actif: s.actif,
       siteNom: (s.sites as any)?.nom ?? null,
       logement: logement
@@ -44,12 +49,15 @@ export default async function SalariesPage() {
             {salariesAvecLogement.length > 1 ? "s" : ""}
           </p>
         </div>
-        <Link
-          href="/salaries/nouveau"
-          className="bg-primary-500 hover:bg-primary-600 text-white text-sm font-medium px-4 py-2 rounded-md transition-colors"
-        >
-          + Ajouter un salarié
-        </Link>
+        <div className="flex items-center gap-2">
+          <ExporterSalariesExcel salaries={salariesAvecLogement} />
+          <Link
+            href="/salaries/nouveau"
+            className="bg-primary-500 hover:bg-primary-600 text-white text-sm font-medium px-4 py-2 rounded-md transition-colors"
+          >
+            + Ajouter un salarié
+          </Link>
+        </div>
       </div>
 
       {error && (

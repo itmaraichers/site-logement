@@ -21,24 +21,33 @@ export default async function FicheSalariePage({
 
   if (!salarie) notFound();
 
-  const [{ data: logements }, { data: documents }, { data: etatsDesLieux }] =
-    await Promise.all([
-      supabase
-        .from("logements")
-        .select("*, chambres(id, nom), maisons(id, nom)")
-        .eq("salarie_id", salarieId)
-        .order("date_entree", { ascending: false }),
-      supabase
-        .from("documents")
-        .select("*")
-        .eq("salarie_id", salarieId)
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("etats_des_lieux")
-        .select("*, maisons(nom), chambres(nom)")
-        .eq("salarie_id", salarieId)
-        .order("date_edl", { ascending: false }),
-    ]);
+  const [
+    { data: logements },
+    { data: documents },
+    { data: etatsDesLieux },
+    { data: notes },
+  ] = await Promise.all([
+    supabase
+      .from("logements")
+      .select("*, chambres(id, nom), maisons(id, nom)")
+      .eq("salarie_id", salarieId)
+      .order("date_entree", { ascending: false }),
+    supabase
+      .from("documents")
+      .select("*")
+      .eq("salarie_id", salarieId)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("etats_des_lieux")
+      .select("*, maisons(nom), chambres(nom)")
+      .eq("salarie_id", salarieId)
+      .order("date_edl", { ascending: false }),
+    supabase
+      .from("notes")
+      .select("*")
+      .eq("salarie_id", salarieId)
+      .order("created_at", { ascending: false }),
+  ]);
 
   const logementActuel = (logements ?? []).find((l) => !l.date_sortie_reelle);
   const historique = (logements ?? []).filter((l) => l.date_sortie_reelle);
@@ -149,6 +158,7 @@ export default async function FicheSalariePage({
         historique={historique as any}
         documents={documents ?? []}
         etatsDesLieux={(etatsDesLieux as any) ?? []}
+        notes={notes ?? []}
       />
     </div>
   );
