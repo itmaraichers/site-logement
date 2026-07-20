@@ -126,6 +126,26 @@ function OngletLogementActuel({
       ? String(logementActuel.montant_caution)
       : ""
   );
+  const [ajoutCautionOuvert, setAjoutCautionOuvert] = useState(false);
+  const [nouveauMontantCaution, setNouveauMontantCaution] = useState("");
+  const [nouvelleDateVersement, setNouvelleDateVersement] = useState(
+    new Date().toISOString().slice(0, 10)
+  );
+
+  async function enregistrerCaution() {
+    if (!logementActuel || !nouveauMontantCaution) return;
+    setChargement(true);
+    await supabase
+      .from("logements")
+      .update({
+        montant_caution: Number(nouveauMontantCaution),
+        date_versement_caution: nouvelleDateVersement || null,
+      })
+      .eq("id", logementActuel.id);
+    setChargement(false);
+    setAjoutCautionOuvert(false);
+    router.refresh();
+  }
 
   async function retirer() {
     if (!logementActuel) return;
@@ -210,7 +230,7 @@ function OngletLogementActuel({
             </p>
           </div>
         )}
-        {logementActuel.montant_caution != null && (
+        {logementActuel.montant_caution != null ? (
           <div>
             <p className="text-slate-400">Caution</p>
             <p className="text-slate-700 font-medium">
@@ -221,8 +241,68 @@ function OngletLogementActuel({
                 ).toLocaleDateString("fr-FR")}`}
             </p>
           </div>
+        ) : (
+          <div>
+            <p className="text-slate-400">Caution</p>
+            <button
+              onClick={() => setAjoutCautionOuvert(true)}
+              className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+            >
+              + Ajouter une caution
+            </button>
+          </div>
         )}
       </div>
+
+      {ajoutCautionOuvert && (
+        <div className="border-t border-slate-100 pt-4 mb-4 space-y-2">
+          <p className="text-xs font-medium text-slate-600">
+            Nouvelle caution
+          </p>
+          <div className="grid grid-cols-2 gap-2 max-w-sm">
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">
+                Montant (€)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                autoFocus
+                value={nouveauMontantCaution}
+                onChange={(e) => setNouveauMontantCaution(e.target.value)}
+                className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">
+                Date de versement
+              </label>
+              <input
+                type="date"
+                value={nouvelleDateVersement}
+                onChange={(e) => setNouvelleDateVersement(e.target.value)}
+                className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+              />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setAjoutCautionOuvert(false)}
+              className="text-xs text-slate-500 hover:text-slate-700"
+            >
+              Annuler
+            </button>
+            <button
+              onClick={enregistrerCaution}
+              disabled={chargement || !nouveauMontantCaution}
+              className="bg-primary-500 hover:bg-primary-600 text-white text-xs font-medium px-3 py-1.5 rounded-md disabled:opacity-50"
+            >
+              {chargement ? "..." : "Enregistrer la caution"}
+            </button>
+          </div>
+        </div>
+      )}
 
       {!restitutionOuverte ? (
         <button

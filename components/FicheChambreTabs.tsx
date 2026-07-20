@@ -197,6 +197,34 @@ function OngletOccupants({
   );
   const [dateRestitution, setDateRestitution] = useState("");
   const [montantRestitue, setMontantRestitue] = useState("");
+  const [ajoutCautionOuvert, setAjoutCautionOuvert] = useState<string | null>(
+    null
+  );
+  const [nouveauMontantCaution, setNouveauMontantCaution] = useState("");
+  const [nouvelleDateVersement, setNouvelleDateVersement] = useState(
+    new Date().toISOString().slice(0, 10)
+  );
+
+  function ouvrirAjoutCaution(logementId: string) {
+    setAjoutCautionOuvert(logementId);
+    setNouveauMontantCaution("");
+    setNouvelleDateVersement(new Date().toISOString().slice(0, 10));
+  }
+
+  async function enregistrerCaution(logementId: string) {
+    if (!nouveauMontantCaution) return;
+    setChargement(true);
+    await supabase
+      .from("logements")
+      .update({
+        montant_caution: Number(nouveauMontantCaution),
+        date_versement_caution: nouvelleDateVersement || null,
+      })
+      .eq("id", logementId);
+    setChargement(false);
+    setAjoutCautionOuvert(null);
+    router.refresh();
+  }
 
   function ouvrirRestitution(logement: Logement) {
     setRestitutionOuverte(logement.id);
@@ -408,7 +436,7 @@ function OngletOccupants({
                         l.date_sortie_prevue
                       ).toLocaleDateString("fr-FR")}`}
                   </p>
-                  {l.montant_caution != null && (
+                  {l.montant_caution != null ? (
                     <p className="text-xs text-slate-500 mt-1">
                       💰 Caution : {l.montant_caution} €
                       {l.date_versement_caution &&
@@ -416,6 +444,13 @@ function OngletOccupants({
                           l.date_versement_caution
                         ).toLocaleDateString("fr-FR")}`}
                     </p>
+                  ) : (
+                    <button
+                      onClick={() => ouvrirAjoutCaution(l.id)}
+                      className="text-xs text-primary-600 hover:text-primary-700 font-medium mt-1"
+                    >
+                      + Ajouter une caution
+                    </button>
                   )}
                 </div>
                 <button
@@ -426,6 +461,57 @@ function OngletOccupants({
                   Retirer
                 </button>
               </div>
+
+              {ajoutCautionOuvert === l.id && (
+                <div className="mt-3 pt-3 border-t border-slate-100 space-y-2">
+                  <div className="grid grid-cols-2 gap-2 max-w-sm">
+                    <div>
+                      <label className="block text-xs text-slate-500 mb-1">
+                        Montant de la caution (€)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        autoFocus
+                        value={nouveauMontantCaution}
+                        onChange={(e) =>
+                          setNouveauMontantCaution(e.target.value)
+                        }
+                        className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-slate-500 mb-1">
+                        Date de versement
+                      </label>
+                      <input
+                        type="date"
+                        value={nouvelleDateVersement}
+                        onChange={(e) =>
+                          setNouvelleDateVersement(e.target.value)
+                        }
+                        className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setAjoutCautionOuvert(null)}
+                      className="text-xs text-slate-500 hover:text-slate-700"
+                    >
+                      Annuler
+                    </button>
+                    <button
+                      onClick={() => enregistrerCaution(l.id)}
+                      disabled={chargement || !nouveauMontantCaution}
+                      className="bg-primary-500 hover:bg-primary-600 text-white text-xs font-medium px-3 py-1.5 rounded-md disabled:opacity-50"
+                    >
+                      {chargement ? "..." : "Enregistrer la caution"}
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {restitutionOuverte === l.id && (
                 <div className="mt-3 pt-3 border-t border-slate-100 space-y-2">
