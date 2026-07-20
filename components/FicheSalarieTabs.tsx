@@ -11,6 +11,10 @@ type Logement = {
   date_sortie_prevue: string | null;
   date_sortie_reelle: string | null;
   remise_cles_le: string | null;
+  montant_caution: number | null;
+  date_versement_caution: string | null;
+  date_restitution_caution: string | null;
+  montant_restitue: number | null;
   chambres: { id: string; nom: string } | null;
   maisons: { id: string; nom: string } | null;
 };
@@ -113,15 +117,35 @@ function OngletLogementActuel({
   const router = useRouter();
   const supabase = createClient();
   const [chargement, setChargement] = useState(false);
+  const [restitutionOuverte, setRestitutionOuverte] = useState(false);
+  const [dateRestitution, setDateRestitution] = useState(
+    new Date().toISOString().slice(0, 10)
+  );
+  const [montantRestitue, setMontantRestitue] = useState(
+    logementActuel?.montant_caution != null
+      ? String(logementActuel.montant_caution)
+      : ""
+  );
 
   async function retirer() {
     if (!logementActuel) return;
     setChargement(true);
     await supabase
       .from("logements")
-      .update({ date_sortie_reelle: new Date().toISOString().slice(0, 10) })
+      .update({
+        date_sortie_reelle: new Date().toISOString().slice(0, 10),
+        ...(logementActuel.montant_caution != null
+          ? {
+              date_restitution_caution: dateRestitution || null,
+              montant_restitue: montantRestitue
+                ? Number(montantRestitue)
+                : null,
+            }
+          : {}),
+      })
       .eq("id", logementActuel.id);
     setChargement(false);
+    setRestitutionOuverte(false);
     router.refresh();
   }
 
@@ -186,14 +210,80 @@ function OngletLogementActuel({
             </p>
           </div>
         )}
+        {logementActuel.montant_caution != null && (
+          <div>
+            <p className="text-slate-400">Caution</p>
+            <p className="text-slate-700 font-medium">
+              {logementActuel.montant_caution} €
+              {logementActuel.date_versement_caution &&
+                ` · versée le ${new Date(
+                  logementActuel.date_versement_caution
+                ).toLocaleDateString("fr-FR")}`}
+            </p>
+          </div>
+        )}
       </div>
-      <button
-        onClick={retirer}
-        disabled={chargement}
-        className="text-sm text-red-600 hover:underline disabled:opacity-50"
-      >
-        Retirer du logement (clôturer le séjour aujourd'hui)
-      </button>
+
+      {!restitutionOuverte ? (
+        <button
+          onClick={() => setRestitutionOuverte(true)}
+          disabled={chargement}
+          className="text-sm text-red-600 hover:underline disabled:opacity-50"
+        >
+          Retirer du logement (clôturer le séjour aujourd'hui)
+        </button>
+      ) : (
+        <div className="border-t border-slate-100 pt-4 space-y-2">
+          {logementActuel.montant_caution != null && (
+            <>
+              <p className="text-xs font-medium text-slate-600">
+                Restitution de la caution
+              </p>
+              <div className="grid grid-cols-2 gap-2 max-w-sm">
+                <div>
+                  <label className="block text-xs text-slate-500 mb-1">
+                    Date de restitution
+                  </label>
+                  <input
+                    type="date"
+                    value={dateRestitution}
+                    onChange={(e) => setDateRestitution(e.target.value)}
+                    className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-500 mb-1">
+                    Montant restitué (€)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={montantRestitue}
+                    onChange={(e) => setMontantRestitue(e.target.value)}
+                    className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+                  />
+                </div>
+              </div>
+            </>
+          )}
+          <div className="flex gap-2 pt-1">
+            <button
+              onClick={() => setRestitutionOuverte(false)}
+              className="text-xs text-slate-500 hover:text-slate-700"
+            >
+              Annuler
+            </button>
+            <button
+              onClick={retirer}
+              disabled={chargement}
+              className="bg-red-500 hover:bg-red-600 text-white text-xs font-medium px-3 py-1.5 rounded-md disabled:opacity-50"
+            >
+              {chargement ? "..." : "Confirmer le retrait"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -476,6 +566,16 @@ function OngletHistorique({ historique }: { historique: Logement[] }) {
             {l.date_sortie_reelle &&
               new Date(l.date_sortie_reelle).toLocaleDateString("fr-FR")}
           </p>
+          {l.montant_caution != null && (
+            <p className="text-sm text-slate-500 mt-1">
+              💰 Caution {l.montant_caution} € —{" "}
+              {l.date_restitution_caution
+                ? `restituée (${l.montant_restitue ?? 0} €) le ${new Date(
+                    l.date_restitution_caution
+                  ).toLocaleDateString("fr-FR")}`
+                : "non restituée"}
+            </p>
+          )}
         </div>
       ))}
     </div>

@@ -6,6 +6,7 @@ const ACCES_RAPIDES = [
   { href: "/salaries", label: "Salariés", icone: "👤" },
   { href: "/chambres", label: "Chambres", icone: "🛏️" },
   { href: "/etats-des-lieux", label: "États des lieux", icone: "📋" },
+  { href: "/cautions", label: "Cautions", icone: "💰" },
   { href: "/entretiens", label: "Entretiens", icone: "🔧" },
   { href: "/documents", label: "Documents", icone: "📁" },
   { href: "/alertes", label: "Alertes", icone: "🔔" },

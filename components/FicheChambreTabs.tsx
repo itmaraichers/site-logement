@@ -10,6 +10,10 @@ type Logement = {
   date_sortie_prevue: string | null;
   date_sortie_reelle: string | null;
   remise_cles_le: string | null;
+  montant_caution: number | null;
+  date_versement_caution: string | null;
+  date_restitution_caution: string | null;
+  montant_restitue: number | null;
   salaries: { id: string; nom: string; prenom: string } | null;
 };
 
@@ -124,6 +128,8 @@ function OngletOccupants({
   const [dateEntree, setDateEntree] = useState("");
   const [dateSortiePrevue, setDateSortiePrevue] = useState("");
   const [remiseCles, setRemiseCles] = useState("");
+  const [montantCaution, setMontantCaution] = useState("");
+  const [dateVersementCaution, setDateVersementCaution] = useState("");
   const [chargement, setChargement] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
 
@@ -158,6 +164,8 @@ function OngletOccupants({
       date_entree: dateEntree,
       date_sortie_prevue: dateSortiePrevue || null,
       remise_cles_le: remiseCles || null,
+      montant_caution: montantCaution ? Number(montantCaution) : null,
+      date_versement_caution: dateVersementCaution || null,
     });
 
     setChargement(false);
@@ -179,16 +187,43 @@ function OngletOccupants({
     setDateEntree("");
     setDateSortiePrevue("");
     setRemiseCles("");
+    setMontantCaution("");
+    setDateVersementCaution("");
     router.refresh();
   }
 
-  async function retirer(logementId: string) {
+  const [restitutionOuverte, setRestitutionOuverte] = useState<string | null>(
+    null
+  );
+  const [dateRestitution, setDateRestitution] = useState("");
+  const [montantRestitue, setMontantRestitue] = useState("");
+
+  function ouvrirRestitution(logement: Logement) {
+    setRestitutionOuverte(logement.id);
+    setDateRestitution(new Date().toISOString().slice(0, 10));
+    setMontantRestitue(
+      logement.montant_caution != null ? String(logement.montant_caution) : ""
+    );
+  }
+
+  async function confirmerRetrait(logementId: string, avecCaution: boolean) {
     setChargement(true);
     await supabase
       .from("logements")
-      .update({ date_sortie_reelle: new Date().toISOString().slice(0, 10) })
+      .update({
+        date_sortie_reelle: new Date().toISOString().slice(0, 10),
+        ...(avecCaution
+          ? {
+              date_restitution_caution: dateRestitution || null,
+              montant_restitue: montantRestitue
+                ? Number(montantRestitue)
+                : null,
+            }
+          : {}),
+      })
       .eq("id", logementId);
     setChargement(false);
+    setRestitutionOuverte(null);
     router.refresh();
   }
 
@@ -308,6 +343,34 @@ function OngletOccupants({
             </div>
           </div>
 
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-slate-100">
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">
+                Montant de la caution (€)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="Ex : 300"
+                value={montantCaution}
+                onChange={(e) => setMontantCaution(e.target.value)}
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">
+                Date de versement de la caution
+              </label>
+              <input
+                type="date"
+                value={dateVersementCaution}
+                onChange={(e) => setDateVersementCaution(e.target.value)}
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              />
+            </div>
+          </div>
+
           {erreur && <p className="text-sm text-red-600">{erreur}</p>}
 
           <button
@@ -330,27 +393,106 @@ function OngletOccupants({
           {occupantsActuels.map((l) => (
             <div
               key={l.id}
-              className="flex items-center justify-between border border-slate-200 rounded-lg p-3"
+              className="border border-slate-200 rounded-lg p-3"
             >
-              <div>
-                <p className="text-sm font-medium text-slate-900">
-                  {l.salaries?.prenom} {l.salaries?.nom}
-                </p>
-                <p className="text-xs text-slate-400">
-                  Depuis le {new Date(l.date_entree).toLocaleDateString("fr-FR")}
-                  {l.date_sortie_prevue &&
-                    ` · Sortie prévue le ${new Date(
-                      l.date_sortie_prevue
-                    ).toLocaleDateString("fr-FR")}`}
-                </p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-900">
+                    {l.salaries?.prenom} {l.salaries?.nom}
+                  </p>
+                  <p className="text-xs text-slate-400">
+                    Depuis le{" "}
+                    {new Date(l.date_entree).toLocaleDateString("fr-FR")}
+                    {l.date_sortie_prevue &&
+                      ` · Sortie prévue le ${new Date(
+                        l.date_sortie_prevue
+                      ).toLocaleDateString("fr-FR")}`}
+                  </p>
+                  {l.montant_caution != null && (
+                    <p className="text-xs text-slate-500 mt-1">
+                      💰 Caution : {l.montant_caution} €
+                      {l.date_versement_caution &&
+                        ` · versée le ${new Date(
+                          l.date_versement_caution
+                        ).toLocaleDateString("fr-FR")}`}
+                    </p>
+                  )}
+                </div>
+                <button
+                  onClick={() => ouvrirRestitution(l)}
+                  disabled={chargement}
+                  className="text-xs text-red-600 hover:underline disabled:opacity-50 whitespace-nowrap"
+                >
+                  Retirer
+                </button>
               </div>
-              <button
-                onClick={() => retirer(l.id)}
-                disabled={chargement}
-                className="text-xs text-red-600 hover:underline disabled:opacity-50"
-              >
-                Retirer
-              </button>
+
+              {restitutionOuverte === l.id && (
+                <div className="mt-3 pt-3 border-t border-slate-100 space-y-2">
+                  {l.montant_caution != null ? (
+                    <>
+                      <p className="text-xs font-medium text-slate-600">
+                        Restitution de la caution
+                      </p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-xs text-slate-500 mb-1">
+                            Date de restitution
+                          </label>
+                          <input
+                            type="date"
+                            value={dateRestitution}
+                            onChange={(e) =>
+                              setDateRestitution(e.target.value)
+                            }
+                            className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-slate-500 mb-1">
+                            Montant restitué (€)
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={montantRestitue}
+                            onChange={(e) =>
+                              setMontantRestitue(e.target.value)
+                            }
+                            className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+                          />
+                        </div>
+                      </div>
+                      <p className="text-xs text-slate-400">
+                        Modifie le montant si une retenue est appliquée
+                        (dégâts constatés à l'état des lieux de sortie).
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-xs text-slate-500">
+                      Aucune caution enregistrée pour ce séjour.
+                    </p>
+                  )}
+                  <div className="flex justify-end gap-2 pt-1">
+                    <button
+                      onClick={() => setRestitutionOuverte(null)}
+                      className="text-xs text-slate-500 hover:text-slate-700"
+                    >
+                      Annuler
+                    </button>
+                    <button
+                      onClick={() =>
+                        confirmerRetrait(l.id, l.montant_caution != null)
+                      }
+                      disabled={chargement}
+                      className="bg-red-500 hover:bg-red-600 text-white text-xs font-medium px-3 py-1.5 rounded-md disabled:opacity-50"
+                    >
+                      {chargement ? "..." : "Confirmer le retrait"}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -367,10 +509,24 @@ function OngletOccupants({
                 key={l.id}
                 className="border border-slate-100 rounded-lg p-3 text-sm text-slate-500"
               >
-                {l.salaries?.prenom} {l.salaries?.nom} — du{" "}
-                {new Date(l.date_entree).toLocaleDateString("fr-FR")} au{" "}
-                {l.date_sortie_reelle &&
-                  new Date(l.date_sortie_reelle).toLocaleDateString("fr-FR")}
+                <p>
+                  {l.salaries?.prenom} {l.salaries?.nom} — du{" "}
+                  {new Date(l.date_entree).toLocaleDateString("fr-FR")} au{" "}
+                  {l.date_sortie_reelle &&
+                    new Date(l.date_sortie_reelle).toLocaleDateString(
+                      "fr-FR"
+                    )}
+                </p>
+                {l.montant_caution != null && (
+                  <p className="text-xs mt-1">
+                    💰 Caution {l.montant_caution} € —{" "}
+                    {l.date_restitution_caution
+                      ? `restituée (${l.montant_restitue ?? 0} €) le ${new Date(
+                          l.date_restitution_caution
+                        ).toLocaleDateString("fr-FR")}`
+                      : "non restituée"}
+                  </p>
+                )}
               </div>
             ))}
           </div>

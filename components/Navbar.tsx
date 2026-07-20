@@ -9,6 +9,7 @@ const LIENS = [
   { href: "/salaries", label: "Salariés" },
   { href: "/chambres", label: "Chambres" },
   { href: "/etats-des-lieux", label: "États des lieux" },
+  { href: "/cautions", label: "Cautions" },
   { href: "/entretiens", label: "Entretiens" },
   { href: "/documents", label: "Documents" },
   { href: "/alertes", label: "Alertes" },
