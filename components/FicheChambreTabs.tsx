@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import ToggleCle from "@/components/ToggleCle";
 
 type Logement = {
   id: string;
@@ -10,6 +11,7 @@ type Logement = {
   date_sortie_prevue: string | null;
   date_sortie_reelle: string | null;
   remise_cles_le: string | null;
+  date_recuperation_cle: string | null;
   montant_caution: number | null;
   date_versement_caution: string | null;
   date_restitution_caution: string | null;
@@ -436,6 +438,22 @@ function OngletOccupants({
                         l.date_sortie_prevue
                       ).toLocaleDateString("fr-FR")}`}
                   </p>
+                  <div className="flex flex-wrap gap-1.5 mt-1.5">
+                    <ToggleCle
+                      logementId={l.id}
+                      champ="remise_cles_le"
+                      valeur={l.remise_cles_le}
+                      labelActif="Clé remise"
+                      labelInactif="Clé non remise"
+                    />
+                    <ToggleCle
+                      logementId={l.id}
+                      champ="date_recuperation_cle"
+                      valeur={l.date_recuperation_cle}
+                      labelActif="Clé récupérée"
+                      labelInactif="Clé pas récupérée"
+                    />
+                  </div>
                   {l.montant_caution != null ? (
                     <p className="text-xs text-slate-500 mt-1">
                       💰 Caution : {l.montant_caution} €
@@ -613,6 +631,15 @@ function OngletOccupants({
                       : "non restituée"}
                   </p>
                 )}
+                <div className="mt-1.5">
+                  <ToggleCle
+                    logementId={l.id}
+                    champ="date_recuperation_cle"
+                    valeur={l.date_recuperation_cle}
+                    labelActif="Clé récupérée"
+                    labelInactif="Clé pas récupérée"
+                  />
+                </div>
               </div>
             ))}
           </div>

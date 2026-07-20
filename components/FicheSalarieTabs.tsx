@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import ToggleCle from "@/components/ToggleCle";
 
 type Logement = {
   id: string;
@@ -11,6 +12,7 @@ type Logement = {
   date_sortie_prevue: string | null;
   date_sortie_reelle: string | null;
   remise_cles_le: string | null;
+  date_recuperation_cle: string | null;
   montant_caution: number | null;
   date_versement_caution: string | null;
   date_restitution_caution: string | null;
@@ -220,16 +222,25 @@ function OngletLogementActuel({
               : "—"}
           </p>
         </div>
-        {logementActuel.remise_cles_le && (
-          <div>
-            <p className="text-slate-400">Remise des clés le</p>
-            <p className="text-slate-700 font-medium">
-              {new Date(logementActuel.remise_cles_le).toLocaleDateString(
-                "fr-FR"
-              )}
-            </p>
+        <div>
+          <p className="text-slate-400 mb-1">Clés</p>
+          <div className="flex flex-wrap gap-1.5">
+            <ToggleCle
+              logementId={logementActuel.id}
+              champ="remise_cles_le"
+              valeur={logementActuel.remise_cles_le}
+              labelActif="Clé remise"
+              labelInactif="Clé non remise"
+            />
+            <ToggleCle
+              logementId={logementActuel.id}
+              champ="date_recuperation_cle"
+              valeur={logementActuel.date_recuperation_cle}
+              labelActif="Clé récupérée"
+              labelInactif="Clé pas récupérée"
+            />
           </div>
-        )}
+        </div>
         {logementActuel.montant_caution != null ? (
           <div>
             <p className="text-slate-400">Caution</p>
@@ -656,6 +667,15 @@ function OngletHistorique({ historique }: { historique: Logement[] }) {
                 : "non restituée"}
             </p>
           )}
+          <div className="mt-1.5">
+            <ToggleCle
+              logementId={l.id}
+              champ="date_recuperation_cle"
+              valeur={l.date_recuperation_cle}
+              labelActif="Clé récupérée"
+              labelInactif="Clé pas récupérée"
+            />
+          </div>
         </div>
       ))}
     </div>

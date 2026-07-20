@@ -38,7 +38,9 @@ export async function getAlertesActives(
       .single(),
     supabase
       .from("logements")
-      .select("id, chambre_id, salarie_id, chambres(nom), salaries(nom, prenom)")
+      .select(
+        "id, chambre_id, salarie_id, montant_caution, chambres(nom), salaries(nom, prenom)"
+      )
       .is("date_sortie_reelle", null),
     supabase
       .from("salaries")
@@ -149,6 +151,20 @@ export async function getAlertesActives(
     })
     .filter((a): a is NonNullable<typeof a> => a !== null);
 
+  const alertesCautionManquante = (edlEntrees ?? [])
+    .filter((l) => l.montant_caution == null)
+    .map((l) => ({
+      id: `caution-${l.id}`,
+      titre: `Caution manquante — ${(l.salaries as any)?.prenom} ${
+        (l.salaries as any)?.nom
+      }`,
+      description: `${
+        (l.chambres as any)?.nom
+      } · aucune caution enregistrée pour la clé remise`,
+      gravite: "en_retard" as const,
+      href: `/chambres/${l.chambre_id}`,
+    }));
+
   const { data: alertesMasquees } = await supabase
     .from("alertes_masquees")
     .select("id");
@@ -159,6 +175,7 @@ export async function getAlertesActives(
     ...alertesSorties,
     ...alertesEdlManquantsFiltrees,
     ...alertesFinContrat,
+    ...alertesCautionManquante,
   ]
     .filter((a) => !idsMasques.has(a.id))
     .sort((a, b) => (a.gravite === "en_retard" ? -1 : 1));

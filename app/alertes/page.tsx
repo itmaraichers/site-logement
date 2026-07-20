@@ -21,8 +21,8 @@ export default async function AlertesPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-semibold text-slate-900">Alertes</h1>
         <p className="text-slate-500">
-          Entretiens, sorties dépassées, états des lieux manquants et fins de
-          contrat — calculés à J-{seuil}
+          Entretiens, sorties dépassées, états des lieux manquants, fins de
+          contrat et cautions manquantes — calculés à J-{seuil}
         </p>
       </div>
 
